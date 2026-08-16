@@ -1,12 +1,11 @@
 {
   "name": "vpn-manager-app",
   "version": "1.0.0",
-  "description": "VPNGate + OpenVPN desktop app with a Next button and tray",
+  "description": "VPNGate + OpenVPN desktop app.",
   "main": "main.js",
   "desktopName": "vpn-manager",
   "license": "MIT",
-  "author": { "name": "v", "email": "v@localhost" },
-  "homepage": "https://github.com/example/vpn-manager",
+  "author": { "name": "v", "email": "v@github.noreply.com" },
   "scripts": {
     "start": "electron .",
     "css": "tailwindcss -i renderer/input.css -o renderer/styles.css --minify",
