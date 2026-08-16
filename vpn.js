@@ -11,6 +11,7 @@ const HISTORY_TTL_MS = 24 * 3600 * 1000;
 
 function resolveBaseDir() {
   if (process.env.VPN_DATA_DIR) return process.env.VPN_DATA_DIR;
+  if (app.isPackaged) return app.getPath("userData");
   if (process.env.APPIMAGE) return path.join(os.homedir(), ".config", "vpn-manager");
 
   return path.join(__dirname, "..");

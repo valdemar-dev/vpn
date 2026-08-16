@@ -38,7 +38,7 @@
       }
     ],
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": ["AppImage", "deb", "pacman"],
       "category": "Network",
       "icon": "assets/icon.png",
       "synopsis": "VPNGate OpenVPN manager",
