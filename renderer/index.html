@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; img-src 'self' data:" />
+    <title>VPN Manager</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="titlebar">
+        <div class="titlebar-title">
+          <span class="mark">V</span>
+          <span>VPN Manager</span>
+        </div>
+        <button id="hideBtn" class="win-btn" title="Minimize to tray">−</button>
+      </header>
+
+      <div id="statusPill" class="panel status">
+        <span class="status-label">status</span>
+        <span id="statusDot" class="live"></span>
+        <span id="statusText" class="status-text st-disconnected">disconnected</span>
+        <span id="statusSub" class="status-sub"></span>
+      </div>
+
+      <div id="serverCard" class="panel server">
+        <span id="flag" class="server-code">--</span>
+        <span id="serverCountry" class="server-country">no connection</span>
+        <span id="serverHost" class="server-host"></span>
+        <span id="serverIp" class="server-ip"></span>
+      </div>
+
+      <div class="actions">
+        <button id="nextBtn" class="btn btn-primary">connect next →</button>
+        <button id="discBtn" class="btn btn-danger">disconnect</button>
+      </div>
+
+      <div id="logList" class="log"></div>
+
+      <div class="foot">closes to tray</div>
+    </div>
+    <script src="renderer.js"></script>
+  </body>
+</html>

@@ -1,0 +1,49 @@
+{
+  "name": "vpn-manager-app",
+  "version": "1.0.0",
+  "description": "VPNGate + OpenVPN desktop app with a Next button and tray",
+  "main": "main.js",
+  "desktopName": "vpn-manager",
+  "license": "MIT",
+  "author": { "name": "v", "email": "v@localhost" },
+  "homepage": "https://github.com/example/vpn-manager",
+  "scripts": {
+    "start": "electron .",
+    "css": "tailwindcss -i renderer/input.css -o renderer/styles.css --minify",
+    "icons": "python3 scripts/make_icons.py",
+    "dist": "npm run css && electron-builder --linux",
+    "dist:appimage": "npm run css && electron-builder --linux AppImage"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.11",
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12",
+    "tailwindcss": "^4.1.11"
+  },
+  "build": {
+    "appId": "dev.vpnmanager.desktop",
+    "productName": "VPN Manager",
+    "asar": true,
+    "files": [
+      "main.js",
+      "vpn.js",
+      "preload.js",
+      "password-preload.js",
+      "renderer/**/*",
+      "assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "scripts/askpass.sh",
+        "to": "bin/askpass.sh"
+      }
+    ],
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Network",
+      "icon": "assets/icon.png",
+      "synopsis": "VPNGate OpenVPN manager",
+      "syncDesktopName": true
+    }
+  }
+}
