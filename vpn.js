@@ -44,8 +44,6 @@ const ASKPASS_FILE = app.isPackaged
   ? path.join(process.resourcesPath, "bin", "askpass.sh")
   : path.join(__dirname, "scripts", "askpass.sh");
 
-let authorized = false;
-
 async function trySudoNoPrompt() {
   try {
     await exec("sudo", ["-n", "true"], { timeout: 10000 });
@@ -58,21 +56,14 @@ async function trySudoNoPrompt() {
 
 // get authorization (needed for iptables and stuff)
 async function ensureAuthorized() {
-  if (authorized) return true;
   if (!HAS_SUDO) return HAS_PKEXEC;
 
-  if (await trySudoNoPrompt()) {
-    authorized = true;
-
-    return true;
-  }
+  if (await trySudoNoPrompt()) return true;
   try {
     await exec("sudo", ["-A", "-v"], {
       timeout: 120000,
       env: { ...process.env, SUDO_ASKPASS: ASKPASS_FILE },
     });
-
-    authorized = true;
 
     return true;
   } catch {}
@@ -91,8 +82,6 @@ async function ensureAuthorized() {
       timeout: 60000,
       env: { ...process.env, SUDO_ASKPASS: ASKPASS_FILE, VPN_ASKPASS_FILE: tmpFile },
     });
-  
-    authorized = true;
   
     return true;
   } catch {
@@ -377,6 +366,12 @@ class VpnManager extends EventEmitter {
         hostname: target.hostname,
         pid,
         ts: Date.now() / 1000,
+        last: {
+          ip,
+          country_short: target.country_short,
+          country_long: target.country_long,
+          hostname: target.hostname,
+        },
       };
     
       this.saveState();
@@ -427,12 +422,31 @@ class VpnManager extends EventEmitter {
       fs.unlinkSync(PID_FILE);
     } catch {}
 
-    this.state = { connected: false };
+    this.state = {
+      connected: false,
+      ...(this.state.last ? { last: this.state.last } : {}),
+    };
     this.saveState();
     
     await this.applyIpv6Firewall(false);
     
     this.log("VPN disconnected successfully.");
+  }
+
+  async connectLast() {
+    const last = this.state.last;
+
+    if (!last || !last.ip) {
+      this.log("ERROR: No previous server to reconnect to.");
+
+      return false;
+    }
+
+    this.log(`Reconnecting to last server ${last.country_short} ${last.ip}...`);
+
+    const ok = await this.connectVpn(last.ip, last.country_short);
+
+    return ok ? this.status() : false;
   }
 
   async connectNext() {
@@ -469,7 +483,10 @@ class VpnManager extends EventEmitter {
       return { connected: true, ...this.state };
     }
     
-    this.state = { connected: false };
+    this.state = {
+      connected: false,
+      ...(this.state.last ? { last: this.state.last } : {}),
+    };
     this.saveState();
     
     return { connected: false };

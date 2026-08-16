@@ -8,6 +8,7 @@ const serverCountry = $("serverCountry");
 const serverHost = $("serverHost");
 const serverIp = $("serverIp");
 const nextBtn = $("nextBtn");
+const connectBtn = $("connectBtn");
 const discBtn = $("discBtn");
 const logList = $("logList");
 
@@ -40,10 +41,18 @@ function resetServer() {
   serverIp.textContent = "";
 }
 
+let connected = false;
+
 function setBusy(busy) {
   nextBtn.disabled = busy;
   discBtn.disabled = busy;
+  connectBtn.disabled = busy || connected;
   nextBtn.textContent = busy ? "working..." : "connect next >";
+}
+
+function setConnected(isConnected) {
+  connected = isConnected;
+  connectBtn.disabled = connected || nextBtn.disabled;
 }
 
 function addLog(line) {
@@ -70,9 +79,11 @@ async function refreshStatus() {
   if (st.connected) {
     setStatus("connected", `pid ${st.pid}`);
     showServer(st);
+    setConnected(true);
   } else {
     setStatus("disconnected");
     resetServer();
+    setConnected(false);
   }
 }
 
@@ -90,15 +101,18 @@ window.vpnAPI.onEvent((ev) => {
     case "connected":
       setStatus("connected", `pid ${ev.pid}`);
       showServer(ev);
+      setConnected(true);
       break;
     case "disconnected":
       setStatus("disconnected");
       resetServer();
+      setConnected(false);
       break;
   }
 });
 
 nextBtn.addEventListener("click", () => window.vpnAPI.next());
+connectBtn.addEventListener("click", () => window.vpnAPI.connect());
 discBtn.addEventListener("click", () => window.vpnAPI.disconnect());
 $("hideBtn").addEventListener("click", () => window.vpnAPI.hide());
 

@@ -84,6 +84,10 @@ function createTray() {
       click: () => runAction("next"),
     },
     {
+      label: "Reconnect",
+      click: () => runAction("connect"),
+    },
+    {
       label: "Disconnect",
       click: () => runAction("disconnect"),
     },
@@ -167,7 +171,7 @@ async function runAction(action) {
   sendEvent("busy", { busy: true });
   
   try {
-    if (action === "next") {
+    if (action === "next" || action === "connect") {
       const ok = await vpn.ensureRoot();
   
       if (!ok) {
@@ -177,12 +181,21 @@ async function runAction(action) {
         return;
       }
   
-      sendEvent("status", { state: "connecting", message: "Connecting to next server..." });
+      if (action === "next") {
+        sendEvent("status", { state: "connecting", message: "Connecting to next server..." });
   
-      const st = await vpn.connectNext();
+        const st = await vpn.connectNext();
   
-      if (st) sendEvent("connected", { ...st });
-      else sendEvent("disconnected", {});
+        if (st) sendEvent("connected", { ...st });
+        else sendEvent("disconnected", {});
+      } else {
+        sendEvent("status", { state: "connecting", message: "Reconnecting to last server..." });
+  
+        const st = await vpn.connectLast();
+  
+        if (st) sendEvent("connected", { ...st });
+        else sendEvent("disconnected", {});
+      }
     } else if (action === "disconnect") {
   
       await vpn.disconnectVpn();
@@ -201,6 +214,7 @@ async function runAction(action) {
 }
 
 ipcMain.handle("vpn:next", () => runAction("next"));
+ipcMain.handle("vpn:connect", () => runAction("connect"));
 ipcMain.handle("vpn:disconnect", () => runAction("disconnect"));
 ipcMain.handle("vpn:status", () => vpn.status());
 ipcMain.on("window:hide", () => mainWindow && mainWindow.hide());
