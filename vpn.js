@@ -290,6 +290,8 @@ class VpnManager extends EventEmitter {
     
     try {
       await execPrivileged(["ip6tables", action, "OUTPUT", "-j", "DROP"]);
+      await execPrivileged(["ip6tables", action, "INPUT", "-j", "DROP"]);
+      await execPrivileged(["ip6tables", action, "FORWARD", "-j", "DROP"]);
     
       this.log(msg);
     } catch (e) {
