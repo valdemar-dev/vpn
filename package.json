@@ -1,11 +1,14 @@
 {
   "name": "vpn-manager-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "VPNGate + OpenVPN desktop app.",
   "main": "main.js",
   "desktopName": "vpn-manager",
   "license": "MIT",
-  "author": { "name": "v", "email": "v@github.noreply.com" },
+  "author": {
+    "name": "v",
+    "email": "v@github.noreply.com"
+  },
   "scripts": {
     "start": "electron .",
     "css": "tailwindcss -i renderer/input.css -o renderer/styles.css --minify",
@@ -38,7 +41,11 @@
       }
     ],
     "linux": {
-      "target": ["AppImage", "deb", "pacman"],
+      "target": [
+        "AppImage",
+        "deb",
+        "pacman"
+      ],
       "category": "Network",
       "icon": "assets/icon.png",
       "synopsis": "VPNGate OpenVPN manager",
