@@ -1,6 +1,6 @@
 {
   "name": "vpn-manager-app",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "VPNGate + OpenVPN desktop app.",
   "main": "main.js",
   "desktopName": "vpn-manager",
