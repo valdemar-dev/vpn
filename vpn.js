@@ -6,7 +6,7 @@ const path = require("path");
 const { app } = require("electron");
 
 const VPNGATE_API = "http://www.vpngate.net/api/iphone/";
-const CACHE_TTL_MS = 3600 * 1000;
+const CACHE_TTL_MS = 30 * 60 * 1000;
 const HISTORY_TTL_MS = 24 * 3600 * 1000;
 
 function resolveBaseDir() {
@@ -189,6 +189,13 @@ class VpnManager extends EventEmitter {
     }
   }
 
+  getUnusedVpns() {
+    const vpns = this.fetchVpns();
+    const history = this.loadHistory();
+    
+    return vpns.filter((v) => !history[v.ip]);
+  }
+
   recordUsedIp(ip) {
     const history = this.loadHistory();
     
@@ -288,15 +295,16 @@ class VpnManager extends EventEmitter {
     const action = block ? "-A" : "-D";
     const msg = block ? "Blocked IPv6 leak via ip6tables" : "Unblocked IPv6";
     
-    try {
-      await execPrivileged(["ip6tables", action, "OUTPUT", "-j", "DROP"]);
-      await execPrivileged(["ip6tables", action, "INPUT", "-j", "DROP"]);
-      await execPrivileged(["ip6tables", action, "FORWARD", "-j", "DROP"]);
+    const chains = ["OUTPUT", "INPUT", "FORWARD"];
+    
+    for (const chain of chains) {
+      try {
+        await execPrivileged(["ip6tables", action, chain, "-j", "DROP"]);
+      } catch {
+        // Rule may already exist; ignore error
+      }
     
       this.log(msg);
-    } catch (e) {
-    
-      this.log(`WARNING: ip6tables operation failed: ${e.stderr || e.message}`);
     }
   }
 

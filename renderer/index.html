@@ -31,7 +31,10 @@
       </div>
 
       <div class="actions">
-        <button id="nextBtn" class="btn btn-primary">connect next →</button>
+        <div id="vpnSelector" class="vpn-selector" style="display:none;">
+          <span class="selector-label">select VPN:</span>
+          <div id="vpnsList" class="vpns-list" style="overflow-y:auto; max-height:200px;"></div>
+        </div>
         <button id="connectBtn" class="btn">connect</button>
         <button id="discBtn" class="btn btn-danger">disconnect</button>
       </div>

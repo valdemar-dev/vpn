@@ -11,6 +11,8 @@ const nextBtn = $("nextBtn");
 const connectBtn = $("connectBtn");
 const discBtn = $("discBtn");
 const logList = $("logList");
+const vpnSelector = $("vpnSelector");
+const vpnsList = $("vpnsList");
 
 function setStatus(state, sub = "") {
   const map = {
@@ -41,6 +43,32 @@ function resetServer() {
   serverIp.textContent = "";
 }
 
+function showVpnsList(vpns) {
+  vpnsList.innerHTML = "";
+  
+  if (!vpns || vpns.length === 0) {
+    vpnsList.innerHTML = '<div class="empty-state">No unused VPNs available</div>';
+    return;
+  }
+  
+  const fragment = document.createDocumentFragment();
+  
+  for (const v of vpns) {
+    const item = document.createElement("div");
+    item.className = "vpn-item";
+    item.dataset.ip = v.ip;
+    item.dataset.countryShort = v.country_short;
+    item.dataset.countryLong = v.country_long;
+    item.dataset.hostname = v.hostname || "";
+    item.innerHTML = `<span class="vpn-country">${v.country_long || v.country_short}</span><span class="vpn-ip">ip: ${v.ip}</span>`;
+    item.onclick = () => connectToVpn(v);
+    fragment.appendChild(item);
+  }
+  
+  vpnsList.appendChild(fragment);
+  vpnsList.scrollTop = 0;
+}
+
 let connected = false;
 
 function setBusy(busy) {
@@ -48,6 +76,7 @@ function setBusy(busy) {
   discBtn.disabled = busy;
   connectBtn.disabled = busy || connected;
   nextBtn.textContent = busy ? "working..." : "connect next >";
+  if (vpnSelector) vpnSelector.disabled = busy;
 }
 
 function setConnected(isConnected) {
@@ -80,10 +109,14 @@ async function refreshStatus() {
     setStatus("connected", `pid ${st.pid}`);
     showServer(st);
     setConnected(true);
+    if (vpnSelector) vpnSelector.style.display = "none";
   } else {
     setStatus("disconnected");
     resetServer();
     setConnected(false);
+    const unused = window.vpnAPI.getUnusedVpns();
+    showVpnsList(unused);
+    if (vpnSelector) vpnSelector.style.display = "block";
   }
 }
 
@@ -115,5 +148,22 @@ nextBtn.addEventListener("click", () => window.vpnAPI.next());
 connectBtn.addEventListener("click", () => window.vpnAPI.connect());
 discBtn.addEventListener("click", () => window.vpnAPI.disconnect());
 $("hideBtn").addEventListener("click", () => window.vpnAPI.hide());
+
+vpnsList.addEventListener("click", (e) => {
+  const item = e.target.closest(".vpn-item");
+  if (!item) return;
+  
+  const vpn = {
+    ip: item.dataset.ip,
+    country_short: item.dataset.countryShort,
+    country_long: item.dataset.countryLong,
+    hostname: item.dataset.hostname,
+  };
+  connectToVpn(vpn);
+});
+
+function connectToVpn(vpn) {
+  window.vpnAPI.connectVpn(vpn.ip, vpn.country_short);
+}
 
 refreshStatus();
