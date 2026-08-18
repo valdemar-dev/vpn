@@ -93,6 +93,15 @@ function createTray() {
     },
     { type: "separator" },
     {
+      label: "Fetch Server List",
+      click: () => {
+        if (mainWindow) {
+          mainWindow.webContents.send("vpn:fetch-list");
+        }
+      },
+    },
+    { type: "separator" },
+    {
       label: "Show",
       click: () => {
         mainWindow.show();
@@ -163,7 +172,7 @@ async function createPasswordDialog() {
   });
 }
 
-async function runAction(action) {
+async function runAction(action, params = {}) {
   if (busy) return;
   
   busy = true;
@@ -171,7 +180,7 @@ async function runAction(action) {
   sendEvent("busy", { busy: true });
   
   try {
-    if (action === "next" || action === "connect") {
+    if (action === "next" || action === "connect" || action === "connect-vpn") {
       const ok = await vpn.ensureRoot();
   
       if (!ok) {
@@ -185,6 +194,13 @@ async function runAction(action) {
         sendEvent("status", { state: "connecting", message: "Connecting to next server..." });
   
         const st = await vpn.connectNext();
+  
+        if (st) sendEvent("connected", { ...st });
+        else sendEvent("disconnected", {});
+      } else if (action === "connect-vpn") {
+        sendEvent("status", { state: "connecting", message: `Connecting to ${params.country_short || params.country} ${params.ip}...` });
+  
+        const st = await vpn.connectTo(params.ip, params.country);
   
         if (st) sendEvent("connected", { ...st });
         else sendEvent("disconnected", {});
@@ -217,6 +233,14 @@ ipcMain.handle("vpn:next", () => runAction("next"));
 ipcMain.handle("vpn:connect", () => runAction("connect"));
 ipcMain.handle("vpn:disconnect", () => runAction("disconnect"));
 ipcMain.handle("vpn:status", () => vpn.status());
+ipcMain.handle("vpn:fetch-list", async () => {
+  const vpns = await vpn.fetchVpns(true);
+  return vpns;
+});
+ipcMain.handle("vpn:connect-vpn", (_e, { ip, country }) => runAction("connect-vpn", { ip, country }));
+ipcMain.handle("vpn:get-unused-vpns", async () => {
+  return vpn.getUnusedVpns();
+});
 ipcMain.on("window:hide", () => mainWindow && mainWindow.hide());
 
 vpn.on("log", (line) => sendEvent("log", { message: line }));
@@ -231,8 +255,6 @@ app.whenReady().then(() => {
   createTray();
   
   updateTray(vpn.status());
-
-  vpn.ensureRoot();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

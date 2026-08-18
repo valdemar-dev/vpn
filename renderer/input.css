@@ -307,6 +307,89 @@ body {
   gap: 8px;
 }
 
+.vpn-selector {
+  position: relative;
+}
+
+.vpn-selector .btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vpn-selector.open .btn {
+  border-color: var(--gold);
+  color: var(--ink);
+}
+
+.caret {
+  color: var(--mute);
+  font-size: 10px;
+  transition: transform 0.15s, color 0.15s;
+}
+
+.vpn-selector.open .caret {
+  transform: rotate(180deg);
+  color: var(--gold);
+}
+
+.vpns-dropdown {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 10;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.vpn-selector.open .vpns-dropdown {
+  display: block;
+}
+
+.vpn-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--line-soft);
+  transition: background 0.12s;
+}
+
+.vpn-item:last-child {
+  border-bottom: none;
+}
+
+.vpn-item:hover {
+  background: var(--gold-soft);
+}
+
+.vpn-country {
+  color: var(--ink);
+}
+
+.vpn-ip {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--mute);
+  white-space: nowrap;
+}
+
+.empty-state {
+  padding: 12px;
+  color: var(--mute);
+  font-size: 12px;
+  text-align: center;
+}
+
 .btn {
   font-family: var(--font-ui);
   letter-spacing: 0.14em;

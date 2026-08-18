@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; img-src 'self' data:" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:" />
     <title>VPN Manager</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -31,10 +31,13 @@
       </div>
 
       <div class="actions">
-        <div id="vpnSelector" class="vpn-selector" style="display:none;">
-          <span class="selector-label">select VPN:</span>
-          <div id="vpnsList" class="vpns-list" style="overflow-y:auto; max-height:200px;"></div>
+        <div id="vpnSelector" class="vpn-selector">
+          <button id="vpnToggleBtn" class="btn">view servers<span class="caret">▾</span></button>
+          <div id="vpnsDropdown" class="vpns-dropdown">
+            <div class="empty-state">Select a VPN server</div>
+          </div>
         </div>
+        <button id="nextBtn" class="btn btn-primary">connect next ></button>
         <button id="connectBtn" class="btn">connect</button>
         <button id="discBtn" class="btn btn-danger">disconnect</button>
       </div>

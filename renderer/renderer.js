@@ -12,7 +12,8 @@ const connectBtn = $("connectBtn");
 const discBtn = $("discBtn");
 const logList = $("logList");
 const vpnSelector = $("vpnSelector");
-const vpnsList = $("vpnsList");
+const vpnToggleBtn = $("vpnToggleBtn");
+const vpnsDropdown = $("vpnsDropdown");
 
 function setStatus(state, sub = "") {
   const map = {
@@ -44,10 +45,10 @@ function resetServer() {
 }
 
 function showVpnsList(vpns) {
-  vpnsList.innerHTML = "";
+  vpnsDropdown.innerHTML = "";
   
   if (!vpns || vpns.length === 0) {
-    vpnsList.innerHTML = '<div class="empty-state">No unused VPNs available</div>';
+    vpnsDropdown.innerHTML = '<div class="empty-state">No unused VPNs available</div>';
     return;
   }
   
@@ -61,12 +62,11 @@ function showVpnsList(vpns) {
     item.dataset.countryLong = v.country_long;
     item.dataset.hostname = v.hostname || "";
     item.innerHTML = `<span class="vpn-country">${v.country_long || v.country_short}</span><span class="vpn-ip">ip: ${v.ip}</span>`;
-    item.onclick = () => connectToVpn(v);
     fragment.appendChild(item);
   }
   
-  vpnsList.appendChild(fragment);
-  vpnsList.scrollTop = 0;
+  vpnsDropdown.appendChild(fragment);
+  vpnsDropdown.scrollTop = 0;
 }
 
 let connected = false;
@@ -74,14 +74,13 @@ let connected = false;
 function setBusy(busy) {
   nextBtn.disabled = busy;
   discBtn.disabled = busy;
-  connectBtn.disabled = busy || connected;
+  connectBtn.disabled = busy;
   nextBtn.textContent = busy ? "working..." : "connect next >";
-  if (vpnSelector) vpnSelector.disabled = busy;
+  vpnToggleBtn.disabled = busy;
 }
 
 function setConnected(isConnected) {
   connected = isConnected;
-  connectBtn.disabled = connected || nextBtn.disabled;
 }
 
 function addLog(line) {
@@ -109,12 +108,13 @@ async function refreshStatus() {
     setStatus("connected", `pid ${st.pid}`);
     showServer(st);
     setConnected(true);
+    vpnSelector.classList.remove("open");
     if (vpnSelector) vpnSelector.style.display = "none";
   } else {
     setStatus("disconnected");
     resetServer();
     setConnected(false);
-    const unused = window.vpnAPI.getUnusedVpns();
+    const unused = await window.vpnAPI.getUnusedVpns();
     showVpnsList(unused);
     if (vpnSelector) vpnSelector.style.display = "block";
   }
@@ -135,11 +135,15 @@ window.vpnAPI.onEvent((ev) => {
       setStatus("connected", `pid ${ev.pid}`);
       showServer(ev);
       setConnected(true);
+      vpnSelector.classList.remove("open");
+      if (vpnSelector) vpnSelector.style.display = "none";
       break;
     case "disconnected":
       setStatus("disconnected");
       resetServer();
       setConnected(false);
+      if (vpnSelector) vpnSelector.style.display = "block";
+      refreshStatus();
       break;
   }
 });
@@ -149,7 +153,7 @@ connectBtn.addEventListener("click", () => window.vpnAPI.connect());
 discBtn.addEventListener("click", () => window.vpnAPI.disconnect());
 $("hideBtn").addEventListener("click", () => window.vpnAPI.hide());
 
-vpnsList.addEventListener("click", (e) => {
+vpnsDropdown.addEventListener("click", (e) => {
   const item = e.target.closest(".vpn-item");
   if (!item) return;
   
@@ -159,7 +163,21 @@ vpnsList.addEventListener("click", (e) => {
     country_long: item.dataset.countryLong,
     hostname: item.dataset.hostname,
   };
+  vpnSelector.classList.remove("open");
   connectToVpn(vpn);
+});
+
+vpnToggleBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  vpnSelector.classList.toggle("open");
+});
+
+document.addEventListener("click", (e) => {
+  if (!vpnSelector.contains(e.target)) vpnSelector.classList.remove("open");
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") vpnSelector.classList.remove("open");
 });
 
 function connectToVpn(vpn) {

@@ -58,7 +58,17 @@ async function trySudoNoPrompt() {
 async function ensureAuthorized() {
   if (!HAS_SUDO) return HAS_PKEXEC;
 
+  // Check if we ALREADY have sudo access (from previous session) - do this FIRST
+  // before ANY attempt to acquire new permissions
+  try {
+    await exec("sudo", ["-n", "-v"], { timeout: 5000 });
+    return true;
+  } catch {
+    // No existing sudo session; proceed to check if we can get permissions
+  }
+
   if (await trySudoNoPrompt()) return true;
+  
   try {
     await exec("sudo", ["-A", "-v"], {
       timeout: 120000,
@@ -105,10 +115,6 @@ function exec(cmd, args, options = {}) {
 
 async function execPrivileged(args, options = {}) {
   if (HAS_SUDO) {
-    if (!(await ensureAuthorized())) {
-      throw new Error("Elevated access not granted.");
-    }
-
     return exec("sudo", ["-n", ...args], options);
   }
   if (HAS_PKEXEC) {
@@ -189,8 +195,8 @@ class VpnManager extends EventEmitter {
     }
   }
 
-  getUnusedVpns() {
-    const vpns = this.fetchVpns();
+  async getUnusedVpns() {
+    const vpns = await this.fetchVpns();
     const history = this.loadHistory();
     
     return vpns.filter((v) => !history[v.ip]);
@@ -292,18 +298,17 @@ class VpnManager extends EventEmitter {
 
   async applyIpv6Firewall(block) {
     const ip6tables = which("ip6tables") || "ip6tables";
-    const action = block ? "-A" : "-D";
+    const action = block ? "-I" : "-D";
     const msg = block ? "Blocked IPv6 leak via ip6tables" : "Unblocked IPv6";
     
     const chains = ["OUTPUT", "INPUT", "FORWARD"];
     
     for (const chain of chains) {
       try {
-        await execPrivileged(["ip6tables", action, chain, "-j", "DROP"]);
+        await execPrivileged([ip6tables, action, chain, 1, "-j", "DROP"]);
       } catch {
-        // Rule may already exist; ignore error
       }
-    
+      
       this.log(msg);
     }
   }
@@ -316,6 +321,76 @@ class VpnManager extends EventEmitter {
     } catch {
       return false;
     }
+  }
+
+  async checkExternalIp() {
+    for (const url of ["https://ifconfig.me/ip", "https://api.ipify.org", "https://icanhazip.com"]) {
+      try {
+        const res = await exec("curl", ["-sL", "--max-time", "10", url], { timeout: 15000 });
+        const ip = res.stdout.trim();
+
+        if (ip) return ip;
+      } catch {}
+    }
+
+    this.log("WARNING: External IP check failed.");
+
+    return null;
+  }
+
+  isPublicIp(ip) {
+    const parts = ip.split(".");
+
+    if (parts.length !== 4) return false;
+
+    const n = parts.map(Number);
+
+    if (n.some((x) => Number.isNaN(x) || x < 0 || x > 255)) return false;
+
+    const [a, b] = n;
+
+    if (a === 10) return false;
+    if (a === 127) return false;
+    if (a === 169 && b === 254) return false;
+    if (a === 172 && b >= 16 && b <= 31) return false;
+    if (a === 192 && b === 168) return false;
+    if (a >= 224) return false;
+
+    return true;
+  }
+
+  async verifyConnection(expectedIp, beforeIp) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const actual = await this.checkExternalIp();
+
+      if (actual && this.isPublicIp(actual)) {
+        if (actual === expectedIp) {
+          this.log(`Connection verified: external IP ${actual} matches VPN server.`);
+
+          return true;
+        }
+
+        if (beforeIp && actual !== beforeIp) {
+          this.log(`Connection verified: external IP changed from ${beforeIp} to ${actual} (VPN route active).`);
+
+          return true;
+        }
+
+        this.log(`WARNING: External IP ${actual} unchanged - traffic not routed through VPN (attempt ${attempt}/3).`);
+      } else if (!actual) {
+        this.log(`WARNING: External IP check failed (attempt ${attempt}/3).`);
+      }
+
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+
+    return false;
+  }
+
+  async connectTo(ip, country) {
+    const ok = await this.connectVpn(ip, country);
+
+    return ok ? this.status() : false;
   }
 
   async connectVpn(ip, country) {
@@ -344,12 +419,21 @@ class VpnManager extends EventEmitter {
     fs.writeFileSync(configFile, configText, "utf8");
 
     this.log(`Starting OpenVPN daemon connection to ${country} ${ip}...`);
-    
+
+    const beforeIp = await this.checkExternalIp();
+
     try {
       await execPrivileged([
         OPENVPN_BIN,
         "--config",
         configFile,
+        "--pull-filter",
+        "ignore",
+        "route-ipv6",
+        "--pull-filter",
+        "ignore",
+        "ifconfig-ipv6",
+        "--block-ipv6",
         "--daemon",
         "--writepid",
         PID_FILE,
@@ -387,7 +471,16 @@ class VpnManager extends EventEmitter {
       this.saveState();
     
       await this.applyIpv6Firewall(true);
-    
+
+      const verified = await this.verifyConnection(ip, beforeIp);
+
+      if (!verified) {
+        this.log("ERROR: Connection test failed - external IP does not match VPN server. Disconnecting.");
+        await this.disconnectVpn();
+
+        return false;
+      }
+
       this.recordUsedIp(ip);
     
       return true;
