@@ -1,9 +1,10 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage } = require("electron");
-const path = require("path");
-const { VpnManager } = require("./vpn");
+import { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage } from "electron";
+import path from "node:path";
+import { VpnManager } from "./vpn";
+import type { VpnStatus } from "../shared/types";
 
-let mainWindow = null;
-let tray = null;
+let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
 let isQuitting = false;
 
 const vpn = new VpnManager();
@@ -20,11 +21,13 @@ if (!gotLock) {
   });
 }
 
-function sendEvent(type, payload = {}) {
+function sendEvent(type: string, payload: Record<string, unknown> = {}) {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send("vpn:event", { type, ...payload });
   }
 }
+
+const devUrl = process.env.VITE_DEV_SERVER_URL;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -34,7 +37,7 @@ function createWindow() {
     maximizable: false,
     fullscreenable: false,
     title: "VPN Manager",
-    icon: path.join(__dirname, "assets", "icon.png"),
+    icon: path.join(__dirname, "..", "assets", "icon.png"),
 
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -43,12 +46,16 @@ function createWindow() {
     },
   });
 
-  mainWindow.loadFile(path.join(__dirname, "renderer", "index.html"));
+  if (devUrl) {
+    mainWindow.loadURL(devUrl);
+  } else {
+    mainWindow.loadFile(path.join(__dirname, "..", "dist", "renderer", "index.html"));
+  }
 
   mainWindow.on("close", (e) => {
     if (!isQuitting) {
       e.preventDefault();
-      mainWindow.hide();
+      mainWindow?.hide();
     }
   });
 
@@ -57,13 +64,13 @@ function createWindow() {
   });
 }
 
-function trayIcon(connected) {
+function trayIcon(connected: boolean) {
   const file = connected ? "tray-connected.png" : "tray-disconnected.png";
 
-  return nativeImage.createFromPath(path.join(__dirname, "assets", file));
+  return nativeImage.createFromPath(path.join(__dirname, "..", "assets", file));
 }
 
-function updateTray(status) {
+function updateTray(status: VpnStatus) {
   if (!tray) return;
 
   tray.setImage(trayIcon(status.connected));
@@ -104,8 +111,8 @@ function createTray() {
     {
       label: "Show",
       click: () => {
-        mainWindow.show();
-        mainWindow.focus();
+        mainWindow?.show();
+        mainWindow?.focus();
       },
     },
     {
@@ -128,7 +135,7 @@ function createTray() {
 
 let busy = false;
 
-async function createPasswordDialog() {
+async function createPasswordDialog(): Promise<string | null> {
   return new Promise((resolve) => {
     const win = new BrowserWindow({
       width: 360,
@@ -140,7 +147,7 @@ async function createPasswordDialog() {
       title: "Authorize",
       parent: mainWindow || undefined,
       modal: Boolean(mainWindow),
-      icon: path.join(__dirname, "assets", "icon.png"),
+      icon: path.join(__dirname, "..", "assets", "icon.png"),
 
       webPreferences: {
         preload: path.join(__dirname, "password-preload.js"),
@@ -151,7 +158,7 @@ async function createPasswordDialog() {
 
     let done = false;
 
-    const finish = (pw) => {
+    const finish = (pw: string | null) => {
       if (done) return;
 
       done = true;
@@ -163,67 +170,77 @@ async function createPasswordDialog() {
       }
     };
 
-    ipcMain.once("auth:submit", (_e, pw) => finish(pw));
+    ipcMain.once("auth:submit", (_e, pw: string) => finish(pw));
     ipcMain.once("auth:cancel", () => finish(null));
 
     win.on("closed", () => finish(null));
-    
-    win.loadFile(path.join(__dirname, "renderer", "password.html"));
+
+    if (devUrl) {
+      win.loadURL(`${devUrl}/password.html`);
+    } else {
+      win.loadFile(path.join(__dirname, "..", "dist", "renderer", "password.html"));
+    }
   });
 }
 
-async function runAction(action, params = {}) {
+interface ConnectParams {
+  ip?: string;
+  country?: string;
+  country_short?: string;
+}
+
+async function runAction(action: string, params: ConnectParams = {}) {
   if (busy) return;
-  
+
   busy = true;
-  
+
   sendEvent("busy", { busy: true });
-  
+
   try {
     if (action === "next" || action === "connect" || action === "connect-vpn") {
       const ok = await vpn.ensureRoot();
-  
+
       if (!ok) {
         vpn.log("ERROR: Cannot connect without elevated access.");
         sendEvent("disconnected", {});
-  
+
         return;
       }
-  
+
       if (action === "next") {
         sendEvent("status", { state: "connecting", message: "Connecting to next server..." });
-  
+
         const st = await vpn.connectNext();
-  
+
         if (st) sendEvent("connected", { ...st });
         else sendEvent("disconnected", {});
       } else if (action === "connect-vpn") {
         sendEvent("status", { state: "connecting", message: `Connecting to ${params.country_short || params.country} ${params.ip}...` });
-  
-        const st = await vpn.connectTo(params.ip, params.country);
-  
+
+        const st = await vpn.connectTo(params.ip!, params.country!);
+
         if (st) sendEvent("connected", { ...st });
         else sendEvent("disconnected", {});
       } else {
         sendEvent("status", { state: "connecting", message: "Reconnecting to last server..." });
-  
+
         const st = await vpn.connectLast();
-  
+
         if (st) sendEvent("connected", { ...st });
         else sendEvent("disconnected", {});
       }
     } else if (action === "disconnect") {
-  
+
       await vpn.disconnectVpn();
       sendEvent("disconnected", {});
     }
   } catch (e) {
-  
-    vpn.log(`ERROR: ${e.message}`);
+
+    vpn.log(`ERROR: ${(e as Error).message}`);
     sendEvent("disconnected", {});
   } finally {
     busy = false;
-  
+
     sendEvent("busy", { busy: false });
     updateTray(vpn.status());
   }
@@ -237,7 +254,7 @@ ipcMain.handle("vpn:fetch-list", async () => {
   const vpns = await vpn.fetchVpns(true);
   return vpns;
 });
-ipcMain.handle("vpn:connect-vpn", (_e, { ip, country }) => runAction("connect-vpn", { ip, country }));
+ipcMain.handle("vpn:connect-vpn", (_e, { ip, country }: ConnectParams) => runAction("connect-vpn", { ip, country }));
 ipcMain.handle("vpn:get-unused-vpns", async () => {
   return vpn.getUnusedVpns();
 });
@@ -247,13 +264,13 @@ vpn.on("log", (line) => sendEvent("log", { message: line }));
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
-  
+
   vpn.askPassword = createPasswordDialog;
   vpn.log("VPN Manager started.");
-  
+
   createWindow();
   createTray();
-  
+
   updateTray(vpn.status());
 
   app.on("activate", () => {

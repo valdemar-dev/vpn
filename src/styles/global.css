@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Fraunces";
+  src: url("../fonts/fraunces-latin.woff2") format("woff2");
+  font-weight: 400 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("../fonts/grotesk-latin.woff2") format("woff2");
+  font-weight: 400 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("../fonts/plexmono-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("../fonts/plexmono-500.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+
+@theme {
+  --color-base: #0f0f0c;
+  --color-deep: #16150f;
+  --color-panel: #1b1a15;
+  --color-line: #e2dccc21;
+  --color-line-soft: #e2dccc12;
+  --color-ink: #e8e3d5;
+  --color-ink-dim: #a49e8e;
+  --color-mute: #6b665a;
+  --color-gold: #b3914f;
+  --color-gold-soft: #b3914f1f;
+  --color-teal: #93b8a5;
+  --color-red: #bf5d4c;
+
+  --shadow-panel: 0 24px 60px -24px #0000008c, 0 2px 8px #0000004d;
+
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-ui: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+
+  --animate-live-blink: live-blink 2.4s ease-in-out infinite;
+  --animate-live-blink-fast: live-blink 1.2s ease-in-out infinite;
+
+  @keyframes live-blink {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.3;
+    }
+  }
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    overflow: hidden;
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+    font-family: var(--font-ui);
+    color: var(--color-ink);
+    background:
+      radial-gradient(900px 620px at 10% -12%, #93b8a50d, transparent 60%),
+      radial-gradient(1100px 700px at 82% 118%, #b3914f0d, transparent 60%),
+      linear-gradient(172deg, var(--color-deep) 0%, var(--color-base) 62%);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #b3914f38 transparent;
+  }
+
+  ::selection {
+    background: var(--color-gold);
+    color: var(--color-base);
+  }
+}
+
+@utility wonk {
+  font-variation-settings: "WONK" 1;
+}

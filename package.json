@@ -2,7 +2,7 @@
   "name": "vpn-manager-app",
   "version": "1.0.4",
   "description": "VPNGate + OpenVPN desktop app.",
-  "main": "main.js",
+  "main": "dist-electron/main.js",
   "desktopName": "vpn-manager",
   "license": "MIT",
   "author": {
@@ -10,28 +10,35 @@
     "email": "v@github.noreply.com"
   },
   "scripts": {
-    "start": "electron .",
-    "css": "tailwindcss -i renderer/input.css -o renderer/styles.css --minify",
+    "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.json --noEmit",
+    "build": "esbuild electron/main.ts electron/preload.ts electron/password-preload.ts --bundle --platform=node --format=cjs --external:electron --outdir=dist-electron && vite build",
+    "start": "npm run build && electron .",
+    "dev": "vite",
     "icons": "python3 scripts/make_icons.py",
-    "dist": "npm run css && electron-builder --linux",
-    "dist:appimage": "npm run css && electron-builder --linux AppImage"
+    "dist": "npm run build && electron-builder --linux",
+    "dist:appimage": "npm run build && electron-builder --linux AppImage"
   },
   "devDependencies": {
-    "@tailwindcss/cli": "^4.1.11",
+    "@tailwindcss/vite": "^4.1.11",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^5.0.0",
     "electron": "^37.2.0",
     "electron-builder": "^26.0.12",
-    "tailwindcss": "^4.1.11"
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tailwindcss": "^4.1.11",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0"
   },
   "build": {
     "appId": "dev.vpnmanager.desktop",
     "productName": "VPN Manager",
     "asar": true,
     "files": [
-      "main.js",
-      "vpn.js",
-      "preload.js",
-      "password-preload.js",
-      "renderer/**/*",
+      "dist-electron/**/*",
+      "dist/**/*",
       "assets/**/*"
     ],
     "extraResources": [
